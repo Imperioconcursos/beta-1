@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
-import { questoesService } from '../../services/questoesService';
-import { Questao } from '../../types/Questao';
+import { questoesService } from '../../services/questoesService'; 
+import { Questao } from '../../types/Questao'; 
 import { 
-  Search, Filter, CheckCircle, XCircle, ArrowRight, 
-  HelpCircle, RefreshCw, ChevronLeft, ChevronRight 
-} from 'lucide-react';
+  Search, Filter
+} from 'lucide-react'; 
 import toast from 'react-hot-toast';
 
-const BancoQuestoes = () => {
+const BancoQuestoes: React.FC = () => {
   const [questoes, setQuestoes] = useState<Questao[]>([]);
   const [questaoAtual, setQuestaoAtual] = useState<Questao | null>(null);
   const [indiceAtual, setIndiceAtual] = useState(0);
@@ -15,16 +14,24 @@ const BancoQuestoes = () => {
   const [respostaUsuario, setRespostaUsuario] = useState<string | null>(null);
   const [mostrarResposta, setMostrarResposta] = useState(false);
   const [respostaCorreta, setRespostaCorreta] = useState<boolean | null>(null);
+  const [alternativasRiscadas, setAlternativasRiscadas] = useState<Set<number>>(new Set());
   
+  // Estado para controlar se a questão foi respondida
+  const [questaoRespondida, setQuestaoRespondida] = useState(false);
+
   // Estados para filtros
   const [disciplinaFiltro, setDisciplinaFiltro] = useState<string>('');
   const [dificuldadeFiltro, setDificuldadeFiltro] = useState<string>('');
   const [tipoFiltro, setTipoFiltro] = useState<string>('');
+  const [anoFiltro, setAnoFiltro] = useState<string>('');
+  const [bancaFiltro, setBancaFiltro] = useState<string>('');
+  const [fonteFiltro, setFonteFiltro] = useState<string>(''); 
+  const [assuntoFiltro, setAssuntoFiltro] = useState<string>('');
   const [textoBusca, setTextoBusca] = useState<string>('');
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
 
   // Listas para filtros
-  const disciplinas = ['Direito Constitucional', 'Direito Administrativo', 'Português', 'Conhecimentos Gerais'];
+  const disciplinas = ['Direito Constitucional', 'Direito Penal', 'Português', 'Conhecimentos Gerais', 'Matemática'];
   const dificuldades = [
     { valor: 'easy', texto: 'Fácil' },
     { valor: 'medium', texto: 'Média' },
@@ -36,68 +43,67 @@ const BancoQuestoes = () => {
     { valor: 'essay', texto: 'Dissertativa' }
   ];
 
+  // Lista de anos e bancas simuladas
+  const anos = ['2020', '2021', '2022', '2023'];
+  const bancas = ['Cesgranrio', 'FGV', 'Cebraspe', 'Fundação Getúlio Vargas'];
+  const fontes = ['PMTO', 'PMSP', 'PMPR', 'PMPA', 'IBGE'];
+  const assuntos = ['Uso de Sinônimos', 'Direitos Humanos', 'Legislação', 'Estatística', 'Álgebra'];
+
   useEffect(() => {
     carregarQuestoes();
-  }, [disciplinaFiltro, dificuldadeFiltro, tipoFiltro]);
+  }, []);
 
   const carregarQuestoes = async () => {
     try {
       setCarregando(true);
-      
       const filtros: Partial<Questao> = {};
-      if (disciplinaFiltro) filtros.disciplina = disciplinaFiltro;
-      if (dificuldadeFiltro) filtros.dificuldade = dificuldadeFiltro as any;
-      if (tipoFiltro) filtros.tipo = tipoFiltro as any;
       
+      if (disciplinaFiltro) filtros.disciplina = disciplinaFiltro;
+      if (dificuldadeFiltro) filtros.dificuldade = dificuldadeFiltro;
+      if (tipoFiltro) filtros.tipo = tipoFiltro;
+      if (anoFiltro) filtros.ano = anoFiltro;
+      if (bancaFiltro) filtros.banca = bancaFiltro;
+      if (assuntoFiltro) filtros.assunto = assuntoFiltro;
+
       const questoesData = await questoesService.listarQuestoes(filtros);
       
-      // Filtragem adicional pelo texto de busca (cliente-side)
-      const questoesFiltradas = textoBusca
-        ? questoesData.filter(q => 
-            q.enunciado.toLowerCase().includes(textoBusca.toLowerCase()) ||
-            q.disciplina.toLowerCase().includes(textoBusca.toLowerCase()) ||
-            q.topico.toLowerCase().includes(textoBusca.toLowerCase())
-          )
-        : questoesData;
-      
+      const questoesFiltradas = questoesData.map(q => ({
+        ...q,
+        assunto: q.topico, 
+        orgao: q.fonte 
+      })).filter(q => {
+        const pertenceAoFonte = fonteFiltro ? q.orgao === fonteFiltro : true;
+        const correspondeBuscaTexto = textoBusca ? q.enunciado.toLowerCase().includes(textoBusca.toLowerCase()) : true;
+
+        return pertenceAoFonte && correspondeBuscaTexto;
+      });
+
       setQuestoes(questoesFiltradas);
-      if (questoesFiltradas.length > 0) {
-        setQuestaoAtual(questoesFiltradas[0]);
-        setIndiceAtual(0);
-      } else {
-        setQuestaoAtual(null);
-      }
-      
+      setQuestaoAtual(questoesFiltradas.length > 0 ? questoesFiltradas[0] : null);
+      setIndiceAtual(0);
       resetarEstadoQuestao();
     } catch (error) {
       console.error('Erro ao carregar questões:', error);
-      toast.error('Erro ao carregar questões');
+      toast.error('Erro ao carregar questões: ' + error.message);
     } finally {
       setCarregando(false);
     }
-  };
-
-  const aplicarFiltros = () => {
-    carregarQuestoes();
-    setFiltrosAbertos(false);
-  };
-
-  const resetarFiltros = () => {
-    setDisciplinaFiltro('');
-    setDificuldadeFiltro('');
-    setTipoFiltro('');
-    setTextoBusca('');
-    setFiltrosAbertos(false);
-  };
-
-  const buscarTexto = () => {
-    carregarQuestoes();
   };
 
   const resetarEstadoQuestao = () => {
     setRespostaUsuario(null);
     setMostrarResposta(false);
     setRespostaCorreta(null);
+    setAlternativasRiscadas(new Set());
+    setQuestaoRespondida(false); // Reseta o estado de questao respondida
+  };
+
+  const verificarResposta = () => {
+    if (!respostaUsuario) return;
+    const alternativaCorreta = questaoAtual?.alternativas.find(a => a.correta);
+    setRespostaCorreta(respostaUsuario === alternativaCorreta?.id);
+    setMostrarResposta(true);
+    setQuestaoRespondida(true); // Marca a questão como respondida
   };
 
   const proximaQuestao = () => {
@@ -116,21 +122,29 @@ const BancoQuestoes = () => {
     }
   };
 
-  const selecionarResposta = (alternativaId: string) => {
-    if (mostrarResposta) return;
-    
-    setRespostaUsuario(alternativaId);
-    
-    if (questaoAtual) {
-      const alternativaCorreta = questaoAtual.alternativas.find(a => a.correta);
-      setRespostaCorreta(alternativaId === alternativaCorreta?.id);
-    }
-    
-    setMostrarResposta(true);
+  const aplicarFiltros = () => {
+    carregarQuestoes();
   };
 
-  const verificarResposta = () => {
-    setMostrarResposta(true);
+  const resetarFiltros = () => {
+    setDisciplinaFiltro('');
+    setDificuldadeFiltro('');
+    setTipoFiltro('');
+    setAnoFiltro('');
+    setBancaFiltro('');
+    setFonteFiltro('');
+    setAssuntoFiltro('');
+    setTextoBusca('');
+  };
+
+  const toggleRiscarAlternativa = (index: number) => {
+    const novasAlternativasRiscadas = new Set(alternativasRiscadas);
+    if (novasAlternativasRiscadas.has(index)) {
+      novasAlternativasRiscadas.delete(index);
+    } else {
+      novasAlternativasRiscadas.add(index);
+    }
+    setAlternativasRiscadas(novasAlternativasRiscadas);
   };
 
   if (carregando) {
@@ -143,305 +157,160 @@ const BancoQuestoes = () => {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Banco de Questões</h1>
-        <p className="text-gray-600">Pratique com questões de concursos anteriores</p>
+      <h1 className="text-2xl font-bold mb-4">Banco de Questões</h1>
+      <div className="flex mb-6">
+        <input
+          type="text"
+          placeholder="Buscar questões..."
+          value={textoBusca}
+          onChange={(e) => setTextoBusca(e.target.value)}
+          className="border rounded p-3 flex-grow shadow-sm"
+        />
+        <button onClick={carregarQuestoes} className="ml-2 p-2 bg-blue-500 text-white rounded shadow hover:bg-blue-600 transition">
+          <Search className="inline w-5 h-5" />
+        </button>
+        <button
+          onClick={() => setFiltrosAbertos(!filtrosAbertos)}
+          className="ml-2 p-2 bg-gray-100 rounded shadow flex items-center hover:bg-gray-200 transition"
+        >
+          <Filter className="mr-1" /> Filtros
+        </button>
       </div>
-      
-      {/* Barra de pesquisa e filtros */}
-      <div className="bg-white p-4 rounded-lg shadow mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-grow relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search size={18} className="text-gray-400" />
+
+      {filtrosAbertos && (
+        <div className="mb-6 bg-white rounded-lg shadow-md p-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="flex flex-col">
+              <label className="mb-1">Disciplina</label>
+              <select value={disciplinaFiltro} onChange={(e) => setDisciplinaFiltro(e.target.value)} className="p-2 border bg-gray-50 rounded shadow-sm">
+                <option value="">Selecione</option>
+                {disciplinas.map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
             </div>
-            <input
-              type="text"
-              value={textoBusca}
-              onChange={(e) => setTextoBusca(e.target.value)}
-              placeholder="Buscar questões..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+
+            <div className="flex flex-col">
+              <label className="mb-1">Assunto</label>
+              <select
+                value={assuntoFiltro}
+                onChange={(e) => setAssuntoFiltro(e.target.value)}
+                className="p-2 border bg-gray-50 rounded shadow-sm"
+                disabled={!disciplinaFiltro}
+              >
+                <option value="">Selecione</option>
+                {assuntos.map((assunto) => <option key={assunto} value={assunto}>{assunto}</option>)}
+              </select>
+            </div>
+
+            <div className="flex flex-col">
+              <label className="mb-1">Dificuldade</label>
+              <select value={dificuldadeFiltro} onChange={(e) => setDificuldadeFiltro(e.target.value)} className="p-2 border bg-gray-50 rounded shadow-sm">
+                <option value="">Selecione</option>
+                {dificuldades.map((d) => <option key={d.valor} value={d.valor}>{d.texto}</option>)}
+              </select>
+            </div>
+
+            <div className="flex flex-col">
+              <label className="mb-1">Tipo de Questão</label>
+              <select value={tipoFiltro} onChange={(e) => setTipoFiltro(e.target.value)} className="p-2 border bg-gray-50 rounded shadow-sm">
+                <option value="">Selecione</option>
+                {tipos.map((t) => <option key={t.valor} value={t.valor}>{t.texto}</option>)}
+              </select>
+            </div>
+
+            <div className="flex flex-col">
+              <label className="mb-1">Ano</label>
+              <select value={anoFiltro} onChange={(e) => setAnoFiltro(e.target.value)} className="p-2 border bg-gray-50 rounded shadow-sm">
+                <option value="">Selecione</option>
+                {anos.map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </div>
+
+            <div className="flex flex-col">
+              <label className="mb-1">Banca</label>
+              <select value={bancaFiltro} onChange={(e) => setBancaFiltro(e.target.value)} className="p-2 border bg-gray-50 rounded shadow-sm">
+                <option value="">Selecione</option>
+                {bancas.map((b) => <option key={b} value={b}>{b}</option>)}
+              </select>
+            </div>
+
+            <div className="flex flex-col">
+              <label className="mb-1">Órgão</label>
+              <select value={fonteFiltro} onChange={(e) => setFonteFiltro(e.target.value)} className="p-2 border bg-gray-50 rounded shadow-sm">
+                <option value="">Selecione</option>
+                {fontes.map((fonte) => <option key={fonte} value={fonte}>{fonte}</option>)}
+              </select>
+            </div>
           </div>
-          
-          <div className="flex gap-2">
-            <button
-              onClick={buscarTexto}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-            >
-              Buscar
+        
+          <div className="mt-4 flex justify-end gap-2">
+            <button onClick={aplicarFiltros} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow transition">
+              Aplicar Filtros
             </button>
-            
-            <button
-              onClick={() => setFiltrosAbertos(!filtrosAbertos)}
-              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md transition-colors flex items-center"
-            >
-              <Filter size={18} className="mr-1" /> Filtros
+            <button onClick={resetarFiltros} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md shadow transition">
+              Limpar Filtros
             </button>
           </div>
         </div>
-        
-        {filtrosAbertos && (
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label htmlFor="disciplina" className="block text-sm font-medium text-gray-700 mb-1">
-                  Disciplina
-                </label>
-                <select
-                  id="disciplina"
-                  value={disciplinaFiltro}
-                  onChange={(e) => setDisciplinaFiltro(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Todas as disciplinas</option>
-                  {disciplinas.map((disc, idx) => (
-                    <option key={idx} value={disc}>{disc}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label htmlFor="dificuldade" className="block text-sm font-medium text-gray-700 mb-1">
-                  Dificuldade
-                </label>
-                <select
-                  id="dificuldade"
-                  value={dificuldadeFiltro}
-                  onChange={(e) => setDificuldadeFiltro(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Qualquer dificuldade</option>
-                  {dificuldades.map((dif, idx) => (
-                    <option key={idx} value={dif.valor}>{dif.texto}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label htmlFor="tipo" className="block text-sm font-medium text-gray-700 mb-1">
-                  Tipo de Questão
-                </label>
-                <select
-                  id="tipo"
-                  value={tipoFiltro}
-                  onChange={(e) => setTipoFiltro(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Todos os tipos</option>
-                  {tipos.map((tipo, idx) => (
-                    <option key={idx} value={tipo.valor}>{tipo.texto}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={resetarFiltros}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
-              >
-                Limpar Filtros
-              </button>
-              <button
-                onClick={aplicarFiltros}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-              >
-                Aplicar Filtros
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-      
-      {/* Container da questão */}
+      )}
+
       {questaoAtual ? (
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          {/* Cabeçalho da questão */}
-          <div className="bg-blue-600 p-4 text-white">
-            <div className="flex justify-between items-center">
-              <div>
-                <span className="text-sm opacity-80">
-                  {questaoAtual.disciplina} • {questaoAtual.topico}
-                </span>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`px-2 py-0.5 rounded-full text-xs ${
-                    questaoAtual.dificuldade === 'easy'
-                      ? 'bg-green-200 text-green-800'
-                      : questaoAtual.dificuldade === 'medium'
-                        ? 'bg-yellow-200 text-yellow-800'
-                        : 'bg-red-200 text-red-800'
-                  }`}>
-                    {questaoAtual.dificuldade === 'easy'
-                      ? 'Fácil'
-                      : questaoAtual.dificuldade === 'medium'
-                        ? 'Média'
-                        : 'Difícil'}
-                  </span>
-                </div>
-              </div>
-              <div>
-                <span className="text-sm">
-                  Questão {indiceAtual + 1} de {questoes.length}
-                </span>
-              </div>
+        <div className="bg-white shadow-xl rounded-lg p-6 mb-6">
+          <div className="flex flex-col space-y-2">
+            <h2 className="text-lg font-bold text-indigo-800">
+              {indiceAtual + 1}. {questaoAtual.disciplina} - {questaoAtual.assunto}
+            </h2>
+            <div className="flex flex-col text-sm text-gray-500">
+              <span>Banca: {questaoAtual.banca}</span>
+              <span>Ano: {questaoAtual.ano}</span>
+              <span>Órgão: {questaoAtual.orgao}</span>
             </div>
+            <p className="text-gray-700 mt-2">{questaoAtual.enunciado}</p>
           </div>
           
-          {/* Corpo da questão */}
-          <div className="p-6">
-            <div className="mb-6">
-              <p className="text-lg text-gray-800">{questaoAtual.enunciado}</p>
-              {questaoAtual.fonte && (
-                <p className="text-sm text-gray-500 mt-3">
-                  Fonte: {questaoAtual.fonte}
-                  {questaoAtual.ano && ` - ${questaoAtual.ano}`}
-                  {questaoAtual.banca && ` | Banca: ${questaoAtual.banca}`}
-                </p>
-              )}
+          {questaoAtual.alternativas.map((a, i) => (
+            <div key={i} className="mb-2 flex items-center">
+              <button onClick={() => toggleRiscarAlternativa(i)} className="mr-2 text-red-500 hover:text-red-700">
+                ❌
+              </button>
+              <label className={`flex items-center space-x-2 cursor-pointer border border-gray-300 rounded-lg p-3 bg-white shadow-md flex-grow ml-2 ${alternativasRiscadas.has(i) ? 'line-through text-gray-500 opacity-50' : ''}`}>
+                <input
+                  type="radio"
+                  value={a.id}
+                  checked={respostaUsuario === a.id}
+                  onChange={() => setRespostaUsuario(a.id)}
+                  className="form-radio text-indigo-600"
+                />
+                <span className="text-gray-800">{String.fromCharCode(65 + i)}) {a.texto}</span>
+              </label>
             </div>
-            
-            {/* Alternativas */}
-            <div className="space-y-3">
-              {questaoAtual.alternativas
-                .sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
-                .map((alternativa, index) => (
-                  <div
-                    key={alternativa.id}
-                    onClick={() => selecionarResposta(alternativa.id)}
-                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                      respostaUsuario === alternativa.id && mostrarResposta
-                        ? alternativa.correta
-                          ? 'bg-green-50 border-green-300'
-                          : 'bg-red-50 border-red-300'
-                        : respostaUsuario === alternativa.id
-                          ? 'bg-blue-50 border-blue-300'
-                          : mostrarResposta && alternativa.correta
-                            ? 'bg-green-50 border-green-300'
-                            : 'border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-start">
-                      <div className={`flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center mr-3 ${
-                        respostaUsuario === alternativa.id
-                          ? 'bg-blue-600 text-white'
-                          : 'border border-gray-300'
-                      }`}>
-                        {String.fromCharCode(65 + index)}
-                      </div>
-                      <p className="text-gray-800">{alternativa.texto}</p>
-                      
-                      {mostrarResposta && alternativa.correta && (
-                        <CheckCircle size={18} className="ml-auto text-green-600" />
-                      )}
-                      {mostrarResposta && !alternativa.correta && respostaUsuario === alternativa.id && (
-                        <XCircle size={18} className="ml-auto text-red-600" />
-                      )}
-                    </div>
-                  </div>
-                ))}
-            </div>
-            
-            {/* Explicação */}
-            {mostrarResposta && questaoAtual.explicacao && (
-              <div className="mt-6 p-4 bg-blue-50 border border-blue-100 rounded-lg">
-                <h3 className="text-lg font-medium text-blue-800 mb-2">Explicação</h3>
-                <p className="text-gray-800">{questaoAtual.explicacao}</p>
-              </div>
+          ))}
+          
+          <div className="flex items-center mt-4">
+            <button 
+              onClick={verificarResposta} 
+              disabled={questaoRespondida} // Botão desabilitado se a questão já tiver sido respondida
+              className={`bg-indigo-600 text-white p-2 rounded-md shadow hover:bg-indigo-700 transition ${questaoRespondida ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              Responder
+            </button>
+            {mostrarResposta && (
+              <span className={`ml-4 text-lg ${respostaCorreta ? 'text-green-500' : 'text-red-500'}`}>
+                {respostaCorreta ? 'Acertou!' : 'Errou!'}
+              </span>
             )}
           </div>
           
-          {/* Footer com botões */}
-          <div className="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
-            <div>
-              {!mostrarResposta ? (
-                <button
-                  onClick={verificarResposta}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors flex items-center"
-                >
-                  <HelpCircle size={18} className="mr-2" />
-                  Ver Resposta
-                </button>
-              ) : (
-                <div className="flex items-center">
-                  {respostaCorreta === true ? (
-                    <span className="text-green-600 font-medium flex items-center">
-                      <CheckCircle size={18} className="mr-2" />
-                      Correto!
-                    </span>
-                  ) : respostaCorreta === false ? (
-                    <span className="text-red-600 font-medium flex items-center">
-                      <XCircle size={18} className="mr-2" />
-                      Incorreto
-                    </span>
-                  ) : (
-                    <span className="text-blue-600 font-medium flex items-center">
-                      <HelpCircle size={18} className="mr-2" />
-                      Resposta revelada
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-            
-            <div className="flex gap-2">
-              <button
-                onClick={questaoAnterior}
-                disabled={indiceAtual === 0}
-                className={`px-4 py-2 rounded-md flex items-center ${
-                  indiceAtual === 0
-                    ? 'text-gray-400 cursor-not-allowed'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <ChevronLeft size={18} className="mr-1" />
-                Anterior
-              </button>
-              
-              <button
-                onClick={() => {
-                  resetarEstadoQuestao();
-                  carregarQuestoes();
-                }}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md flex items-center"
-              >
-                <RefreshCw size={18} className="mr-1" />
-                Nova
-              </button>
-              
-              <button
-                onClick={proximaQuestao}
-                disabled={indiceAtual === questoes.length - 1}
-                className={`px-4 py-2 rounded-md flex items-center ${
-                  indiceAtual === questoes.length - 1
-                    ? 'text-gray-400 cursor-not-allowed'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                Próxima
-                <ChevronRight size={18} className="ml-1" />
-              </button>
-            </div>
+          <div className="mt-6 flex justify-between">
+            <button onClick={questaoAnterior} disabled={indiceAtual === 0} className="px-4 py-2 bg-gray-300 rounded shadow hover:bg-gray-400 transition">
+              Anterior
+            </button>
+            <button onClick={proximaQuestao} disabled={indiceAtual === questoes.length - 1} className="px-4 py-2 bg-gray-300 rounded shadow hover:bg-gray-400 transition">
+              Próxima
+            </button>
           </div>
         </div>
       ) : (
-        <div className="bg-white p-8 rounded-lg shadow text-center">
-          <div className="text-gray-500 mb-4">
-            <Search size={48} className="mx-auto" />
-          </div>
-          <h3 className="text-xl font-medium text-gray-800 mb-2">
-            Nenhuma questão encontrada
-          </h3>
-          <p className="text-gray-600 mb-4">
-            Tente ajustar os filtros ou fazer uma busca diferente.
-          </p>
-          <button
-            onClick={resetarFiltros}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
-          >
-            Limpar Filtros
-          </button>
-        </div>
+        <div className="text-center text-gray-500">Nenhuma questão encontrada.</div>
       )}
     </div>
   );
