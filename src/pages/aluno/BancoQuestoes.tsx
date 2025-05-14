@@ -13,11 +13,7 @@ const BancoQuestoes: React.FC = () => {
     const [mostrarResposta, setMostrarResposta] = useState(false);
     const [respostaCorreta, setRespostaCorreta] = useState<boolean | null>(null);
     const [alternativasRiscadas, setAlternativasRiscadas] = useState<Set<number>>(new Set());
-    
-    // Estado para controlar se a questão foi respondida
     const [questaoRespondida, setQuestaoRespondida] = useState(false);
-    
-    // Estados para filtros
     const [disciplinaFiltro, setDisciplinaFiltro] = useState<string>('');
     const [dificuldadeFiltro, setDificuldadeFiltro] = useState<string>('');
     const [tipoFiltro, setTipoFiltro] = useState<string>('');
@@ -27,8 +23,8 @@ const BancoQuestoes: React.FC = () => {
     const [assuntoFiltro, setAssuntoFiltro] = useState<string>('');
     const [textoBusca, setTextoBusca] = useState<string>('');
     const [filtrosAbertos, setFiltrosAbertos] = useState(false);
-    
-    // Listas para filtros
+
+    // Definindo as disciplinas, dificuldades e tipos
     const disciplinas = ['Direito Constitucional', 'Direito Penal', 'Português', 'Conhecimentos Gerais', 'Matemática'];
     const dificuldades = [
         { valor: 'easy', texto: 'Fácil' },
@@ -40,20 +36,35 @@ const BancoQuestoes: React.FC = () => {
         { valor: 'true_false', texto: 'Verdadeiro/Falso' },
         { valor: 'essay', texto: 'Dissertativa' }
     ];
-    
-    // Lista de anos e bancas simuladas
+
     const anos = ['2020', '2021', '2022', '2023'];
-    const bancas = ['Cesgranrio', 'FGV', 'Cebraspe', 'Fundação Getúlio Vargas'];
-    const fontes = ['PMTO', 'PMSP', 'PMPR', 'PMPA', 'IBGE'];
-    const assuntos = ['Uso de Sinônimos', 'Direitos Humanos', 'Legislação', 'Estatística', 'Álgebra'];
+    const bancas = ['Cespe', 'FGV', 'VUNESP', 'FCC', 'IADES', 'IBFC', 'AOCP', 'FUMARC', 'CESGRANRIO', 'FUNDATEC', 'INSTITUTO ÁGUAS', 'IDIB', 'QUADRIX', 'CONSULPLAN', 'CETRO', 'UNESP', 'OBJETIVA', 'UNIFESP', 'IESES'];
+
+    // Inicializando a lista de fontes
+    const fontes = [
+        'PM-TO', 'PM-SP', 'PM-PR', 'PM-PA', 'IBGE',
+        'PRF', 'PF', 'PC-DF', 'PM-DF', 'PC-SP', 'PM-SP',
+        'PC-MG', 'PM-MG', 'PC-RJ', 'PM-RJ', 'PC-BA', 'PM-BA',
+        'PC-RS', 'PM-RS', 'PC-PR', 'PM-PR', 'PC-SC', 'PM-SC',
+        'PC-GO', 'PM-GO', 'PC-PE', 'PM-PE', 'PC-CE', 'PM-CE',
+        'PC-AM', 'PM-AM', 'PC-PA', 'PM-PA', 'PC-MA', 'PM-MA',
+        'PC-PB', 'PM-PB', 'PC-PI', 'PM-PI', 'PC-RN', 'PM-RN',
+        'PC-MS', 'PM-MS', 'PC-MT', 'PM-MT', 'PC-ES', 'PM-ES',
+        'DEPEN', 'DPU', 'MPU', 'TRE-SP', 'TRE-RJ', 'TRF-1', 'TRF-3', 'TJ-SP'
+    ];
+
+    // Aqui você pode definir seus assuntos
+    const assuntos = [
+        'Uso de Sinônimos', 'Direitos Humanos', 'Legislação', 'Estatística', 'Álgebra'
+    ];
 
     useEffect(() => {
         carregarQuestoes();
     }, []);
     
     const carregarQuestoes = async () => {
+        setCarregando(true);
         try {
-            setCarregando(true);
             const filtros: Partial<Questao> = {};
             
             if (disciplinaFiltro) filtros.disciplina = disciplinaFiltro;
@@ -93,7 +104,7 @@ const BancoQuestoes: React.FC = () => {
         setMostrarResposta(false);
         setRespostaCorreta(null);
         setAlternativasRiscadas(new Set());
-        setQuestaoRespondida(false); // Reseta o estado de questão respondida
+        setQuestaoRespondida(false);
     };
     
     const verificarResposta = () => {
@@ -101,7 +112,7 @@ const BancoQuestoes: React.FC = () => {
         const alternativaCorreta = questaoAtual?.alternativas.find(a => a.correta);
         setRespostaCorreta(respostaUsuario === alternativaCorreta?.id);
         setMostrarResposta(true);
-        setQuestaoRespondida(true); // Marca a questão como respondida
+        setQuestaoRespondida(true);
     };
     
     const proximaQuestao = () => {
@@ -272,7 +283,7 @@ const BancoQuestoes: React.FC = () => {
                         <h2 className="text-lg font-bold text-indigo-800">
                             {indiceAtual + 1}. {questaoAtual.disciplina} - {questaoAtual.assunto}
                         </h2>
-                        <div className="flex flex-col text-sm text-gray-500">
+                        <div className="flex space-x-4 text-sm text-gray-500">
                             <span>Banca: {questaoAtual.banca}</span>
                             <span>Ano: {questaoAtual.ano}</span>
                             <span>Órgão: {questaoAtual.orgao}</span>
@@ -282,10 +293,16 @@ const BancoQuestoes: React.FC = () => {
                     
                     {questaoAtual.alternativas.map((a, i) => (
                         <div key={i} className="mb-2 flex items-center">
-                            <button onClick={() => toggleRiscarAlternativa(i)} className="mr-2 text-red-500 hover:text-red-700">
-                                ❌
-                            </button>
-                            <label className={`flex items-center space-x-2 cursor-pointer border border-gray-300 rounded-lg p-3 bg-white shadow-md flex-grow ml-2 ${alternativasRiscadas.has(i) ? 'line-through text-gray-500 opacity-50' : ''}`}>
+                            <div className="relative">
+                                <button
+                                    onClick={() => toggleRiscarAlternativa(i)}
+                                    className="text-red-500 opacity-0 hover:opacity-100 transition-opacity"
+                                    style={{ marginRight: "10px" }} // Espaço adicional
+                                >
+                                    ❌
+                                </button>
+                            </div>
+                            <label className={`flex items-center space-x-2 cursor-pointer border border-gray-300 rounded-lg p-3 bg-white shadow-md flex-grow ${alternativasRiscadas.has(i) ? 'line-through text-gray-500 opacity-50' : ''}`}>
                                 <input
                                     type="radio"
                                     value={a.id}
