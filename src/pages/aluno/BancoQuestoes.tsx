@@ -284,11 +284,11 @@ const BancoQuestoes: React.FC = () => {
                             {indiceAtual + 1}. {questaoAtual.disciplina} - {questaoAtual.assunto}
                         </h2>
                         <div className="flex space-x-4 text-sm text-gray-500">
-                            <span>Banca: {questaoAtual.banca}</span>
-                            <span>Ano: {questaoAtual.ano}</span>
-                            <span>Órgão: {questaoAtual.orgao}</span>
+                            <span className="font-semibold">Banca:</span> <span>{questaoAtual.banca}</span>
+                            <span className="font-semibold">Ano:</span> <span>{questaoAtual.ano}</span>
+                            <span className="font-semibold">Órgão:</span> <span>{questaoAtual.orgao}</span>
                         </div>
-                        <p className="text-gray-700 mt-2">{questaoAtual.enunciado}</p>
+                        <p className="text-gray-800 mt-2 text-base leading-6">{questaoAtual.enunciado}</p>
                     </div>
                     
                     {questaoAtual.alternativas.map((a, i) => (
@@ -302,13 +302,13 @@ const BancoQuestoes: React.FC = () => {
                                     ❌
                                 </button>
                             </div>
-                            <label className={`flex items-center space-x-2 cursor-pointer border border-gray-300 rounded-lg p-3 bg-white shadow-md flex-grow ${alternativasRiscadas.has(i) ? 'line-through text-gray-500 opacity-50' : ''}`}>
+                            <label className={`flex items-center space-x-2 cursor-pointer border border-gray-300 rounded-lg p-3 bg-white shadow-md flex-grow transition-all duration-300 ease-in-out hover:bg-gray-100 ${alternativasRiscadas.has(i) ? 'line-through text-gray-500 opacity-60' : ''}`}>
                                 <input
                                     type="radio"
                                     value={a.id}
                                     checked={respostaUsuario === a.id}
                                     onChange={() => marcarAlternativaComoResposta(i)} 
-                                    className="form-radio text-indigo-600"
+                                    className="form-radio text-indigo-600 focus:ring-indigo-500"
                                 />
                                 <span className="text-gray-800">{String.fromCharCode(65 + i)}) {a.texto}</span>
                             </label>
